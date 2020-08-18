@@ -1,0 +1,95 @@
+╔═════════════════════════╗
+║COVID-19 SCREENING SYSTEM║
+╚═════════════════════════╝
+
+Note: For anyone who just wants a general overview, reading the introduction should suffice. The other sections go more in-depth about the app itself.
+
+
+
+╔════════════╗
+║INTRODUCTION║
+╚════════════╝
+This system can be set up to screen people for COVID as they enter a building. The system is comprised of a Raspberry Pi, a panel with two buttons (which can eventually be converted to foot buttons to allow the users to use the system completely hands-free to avoid contact), a phone (with my app), and a small thermal camera which is designed to be plugged directly into the phone.
+
+To use this system, a user will walk up to a large screen which is connected to the Raspberry Pi. On this screen, the user will be prompted to hit a button to start (in either French or English). After selecting a language, the user will be asked to stand still and look at the other screen, which has the app open. On this screen, a video feed of the user will be displayed. Because the camera is much cheaper than industrial-grade thermal cameras, the app will automatically detect whether it can get a good temperature reading or not. If it is not able, the app will direct the user to center themselves in the frame, to look at the camera, and can even detect whether they are too close or too far from the camera. Once the user is cooperating, the camera will be able to take a good reading of their temperature (there are many failsafes in place to ensure this reading is accurate). Their temperature will then be passed back to the Raspberry Pi over bluetooth and the user will be directed to look back at the big screen. Assuming the user's temperature is not feverish, the user will answer a short series of screening questions before being allowed to enter the building. Overall, this entire screening process can be as short as ten to fifteen seconds, depending on how fast the user can read the screening questions.
+
+
+╔══════════╗
+║CHALLENGES║
+╚══════════╝
+I overcame quite a few challenges when programming this app. I won't list them all, but here are a few of the bigger ones:
+
+	-First and foremost, when I came into this co-op I had never made an Android application before. Nearly everything I've worked on in the app (besides some basic logic), I had to teach myself this summer.
+	-The SDK for the thermal camera is extremely buggy with little to no support from the developers. I had to work around many programming errors that were built into something I could not change. As such, error handling took up a very substantial portion of my development time.
+	-Debugging the app could be nearly impossible at times - to debug an Android application, the phone running the app must be connected via a USB cable to the computer. If I wanted to test the app while using the camera, I needed to come up with clever workarounds due to the fact that the camera uses the phone's only USB port.
+
+
+╔══════════════════════════════════╗
+║SPECIFICATIONS & TECHNICAL DETAILS║
+╚══════════════════════════════════╝
+	-The standard deviation of the camera itself (when used normally) is about 1 to 3 degrees Celsius. With a lot of software fixes and error handling, however, the app manages to bring this down to less than 0.5 degrees Fahrenheit - this means the app manages to use the camera's hardware in a way that is somewhere from three to ten times more accurate than a program that does not focus only on people's foreheads. With such a low standard deviation, this relatively low-cost system becomes a viable alternative to a much more expensive thermal screening system.
+	-The app is designed to run perfectly on Android 9.0 or higher on the Samsung A50 or similar devices. With very different devices, the experience could differ.
+	-The app is not very CPU-intensive. While idle, this app draws minimal power from the phone's battery - this means the phone only really needs to charge after every day or so of constant use.
+	-Depending on the selected settings for this system, it is possible for the system to save user's data. If this feature is enabled, a company with this system set up could monitor all people entering its building to ensure that nobody with COVID symptoms enters the building when they aren't supposed to. By default, this feature is entirely disabled and cannot in any way be activated by a client.
+	-The app's source code is very clean (i.e. organized and readable). Code maintenance should be easy even for those unfamiliar with the code.
+
+
+╔══════════════════════════════════════════╗
+║LIST OF MAJOR FEATURES INCLUDED IN THE APP║
+╚══════════════════════════════════════════╝
+The most important features:
+
+	-automatically opens app when the thermal camera is connected, and automatically connects the camera to the app
+	-takes user's temperature on their forehead
+	-can be controlled completely remotely via Bluetooth Low-Engergy (BLE) signals
+	-detects faces on a live camera feed (this even works with masks or in the dark)
+	-can detect whether user is in the right place and is looking at the camera
+
+Others - please note, these are not in any particular order and may be missing some of the less important items:
+
+	-uses an ENORMOUS amount of error handling - the FLIR SDK is very buggy
+	-uses multithreading to not block UI thread
+	-code is commented and clean
+	-has a working UI that shows a live camera feed + a debugging camera feed (the latter of which can easily be disabled)
+	-live camera feed is a mixture of thermal and visible data
+	-finds foreheads
+	-connects to gatt client via BLE
+	-gatt server stays up even when the app is closed with the process destroyed - will automatically be connected to client device next time app is opened (so the client only needs to connect once ever, assuming the client device is always running)
+	-keeps camera awake even when not in use (default timeout is 120 seconds, app pings camera every 90 for it to stay awake)
+	-camera calibrates properly every time
+	-bluetooth is used to send information (readings, errors) to external devices
+	-app is stable with few to no bugs
+	-app automatically turns on bluetooth (does not need to ask for permission)
+	-app automatically connects camera and sets it to the default app for the device (does not need to ask for permission)
+	-automatically requests permissions as needed (external storage permissions for writing to a log while testing)
+	-app has the potential to be used for face ID (this has not been developed but an easy starting point has been made)
+	-app is optimized
+	-no memory leaks
+	-app can run indefinitely to automatically find forehead temperature readings: these readings are logged to a file which can be used in Excel for data analysis (this is for testing purposes only)
+	-app dumps targeted debug log into a file
+	-app reports errors properly: -1 means the camera is disconnected, -2 means there is no face to be found in the frame, -5 means the camera's battery died, -96 means the user is too close, -97 means the user is too far, -99 means the face is not near the center of the frame, -98 means the user is not looking at the camera (the app will keep trying to correct these errors until the app times out the process)
+	-bad readings (which are the camera's fault and not the user's fault) are automatically detected, a new reading is taken
+	-standard deviation in temperature of the same forehead, when the app is used properly, can be as low as 0.2 degrees Fahrenheit!
+	-standard deviation in temperature of a forehead, when the app is not used properly, still is only 0.4-0.6, with 0.8 in the extreme cases
+	  ^however, camera can now automatically correct for misuse! This has lowered the stdev to about 0.5 for normal use
+	-UI is friendly - when the camera is initializing, the user is asked to wait. Then, if the user is not in the right place on the camera feed (which is shown when a reading is being taken), text shows up and tells the user exactly what to do so that the camera can take a proper reading
+	-app detects battery life and uses a model to predict how long the battery will last
+	-app detects whether the camera is plugged in or not, uses this to decide which linear shift to apply
+	-app ensures the camera gets a good reading by taking many readings in a row and making sure they are similar
+	-app gives first-time-setup instructions
+	-app shows RPC splashscreen on startup
+	-app has RPC icon
+	-app is in ca.rpc.foreheadtemperaturedetector package
+	-(virtually) all crashes have been completely eliminated - including those caused by the SDK itself (except one which is occasionally induced from a setting that normal users should never encounter)
+	-app has help menu
+	-help menu has detailed instruction walkthrough for setup
+	-help menu has automatic troubleshooting to help let the user know what might be wrong
+	-user can take a reading from the options menu
+	-app can detect if it crashed last time it was run (can detect internal & external java crashes as well as external C++ crashes due to the SDK, uses a dead-man's switch)
+	-app can detect if it is started for the very first time
+	-app immediately relaunches itself exactly where it left off if and only if it crashes (if it's closed normally it stays closed, as an app should)
+
+
+
+
+
